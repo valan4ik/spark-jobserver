@@ -107,3 +107,12 @@ You might not be able to access HDFS, or whatever shared file system your data f
 ### Timeouts
 
 You may need to enable host-only networking to get Docker to work in AWS.
+
+
+### Building docker image from the master branch
+
+If you want to build your docker version from the snapshot:
+
+```
+sbt docker
+```

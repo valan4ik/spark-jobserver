@@ -158,25 +158,36 @@ lazy val dockerSettings = Seq(
       case "2.11" =>
         Versions.spark match {
           case s if s.startsWith("1") => {"./make-distribution.sh -Dscala-2.11 -Phadoop-2.7 -Phive"}
-          case _ => {"./dev/make-distribution.sh -Dscala-2.11 -Phadoop-2.7 -Phive"}
+          case _ => {"./dev/make-distribution.sh --mvn=mvn -Dscala-2.11 -Phadoop-2.7 -Phive"}
         }
       case other => throw new RuntimeException(s"Scala version $other is not supported!")
     }
 
     new sbtdocker.mutable.Dockerfile {
-      from(s"openjdk:${Versions.java}")
+      from(s"ubuntu:trusty")
       // Dockerfile best practices: https://docs.docker.com/articles/dockerfile_best-practices/
       expose(8090)
       expose(9999) // for JMX
       env("MESOS_VERSION", Versions.mesos)
+      runRaw(""" apt-get -y update && \
+                 apt-get dist-upgrade -y
+      """)
+      runRaw("apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv E56151BF")
       runRaw(
-        """echo "deb http://repos.mesosphere.io/ubuntu/ trusty main" > /etc/apt/sources.list.d/mesosphere.list && \
-                apt-key adv --keyserver keyserver.ubuntu.com --recv E56151BF && \
+        """echo "deb http://repos.mesosphere.io/ubuntu trusty main" | tee /etc/apt/sources.list.d/mesosphere.list && \
+                apt-get install -y --no-install-recommends software-properties-common && \
+                add-apt-repository -y ppa:openjdk-r/ppa && \
                 apt-get -y update && \
-                apt-get -y install mesos=${MESOS_VERSION} && \
+                apt-get -y install mesos=${MESOS_VERSION} wget curl python openjdk-8-jdk && \
                 apt-get clean
         """)
-      env("MAVEN_VERSION","3.3.9")
+      env("JAVA_HOME", "/usr/lib/jvm/java-8-openjdk-amd64")
+      runRaw("""update-alternatives --install "/usr/bin/java" "java" "${JAVA_HOME}/bin/java" 1 && \
+                update-alternatives --install "/usr/bin/javac" "javac" "${JAVA_HOME}/bin/javac" 1 && \
+                update-alternatives --set java "${JAVA_HOME}/bin/java" && \
+                update-alternatives --set javac "${JAVA_HOME}/bin/javac"
+      """)
+      env("MAVEN_VERSION","3.6.3")
       runRaw(
         """mkdir -p /usr/share/maven /usr/share/maven/ref \
           && curl -fsSL http://apache.osuosl.org/maven/maven-3/$MAVEN_VERSION/binaries/apache-maven-$MAVEN_VERSION-bin.tar.gz \
@@ -185,7 +196,9 @@ lazy val dockerSettings = Seq(
         """)
       env("MAVEN_HOME","/usr/share/maven")
       env("MAVEN_CONFIG", "/.m2")
-
+      runRaw("""wget www.scala-lang.org/files/archive/scala-2.11.7.deb && \
+                dpkg -i scala-2.11.7.deb
+      """)
       copy(artifact, artifactTargetPath)
       copy(baseDirectory(_ / "bin" / "server_start.sh").value, file("app/server_start.sh"))
       copy(baseDirectory(_ / "bin" / "server_stop.sh").value, file("app/server_stop.sh"))
@@ -215,7 +228,7 @@ lazy val dockerSettings = Seq(
     }
   },
   imageNames in docker := Seq(
-    sbtdocker.ImageName(namespace = Some("velvia"),
+    sbtdocker.ImageName(namespace = Some("valik"),
       repository = "spark-jobserver",
       tag = Some(
         s"${version.value}" +
