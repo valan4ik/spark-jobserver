@@ -14,7 +14,7 @@ object Versions {
   lazy val jodaConvert = "1.8.1"
   lazy val jodaTime = "2.9.3"
   lazy val logback = "1.0.7"
-  lazy val mesos = sys.env.getOrElse("MESOS_VERSION", "1.0.0-2.0.89.ubuntu1404")
+  lazy val mesos = sys.env.getOrElse("MESOS_VERSION", "1.2.0")
   lazy val metrics = "2.2.0"
   lazy val postgres = "9.4.1209"
   lazy val mysql = "5.1.42"

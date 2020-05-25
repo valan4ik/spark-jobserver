@@ -158,13 +158,13 @@ lazy val dockerSettings = Seq(
       case "2.11" =>
         Versions.spark match {
           case s if s.startsWith("1") => {"./make-distribution.sh -Dscala-2.11 -Phadoop-2.7 -Phive"}
-          case _ => {"./dev/make-distribution.sh --mvn=mvn -Dscala-2.11 -Phadoop-2.7 -Phive"}
+          case _ => {"./dev/change-scala-version.sh 2.11 && ./dev/make-distribution.sh -Dscala-2.11 -Phadoop-2.7 -Phive -DrecompileMode=all"}
         }
       case other => throw new RuntimeException(s"Scala version $other is not supported!")
     }
 
     new sbtdocker.mutable.Dockerfile {
-      from(s"ubuntu:trusty")
+      from(s"ubuntu:xenial")
       // Dockerfile best practices: https://docs.docker.com/articles/dockerfile_best-practices/
       expose(8090)
       expose(9999) // for JMX
@@ -175,18 +175,16 @@ lazy val dockerSettings = Seq(
       runRaw("apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv E56151BF")
       runRaw(
         """echo "deb http://repos.mesosphere.io/ubuntu trusty main" | tee /etc/apt/sources.list.d/mesosphere.list && \
-                apt-get install -y --no-install-recommends software-properties-common && \
-                add-apt-repository -y ppa:openjdk-r/ppa && \
                 apt-get -y update && \
-                apt-get -y install mesos=${MESOS_VERSION} wget curl python openjdk-8-jdk && \
+                apt-get -y install mesos wget curl python openjdk-8-jdk && \
                 apt-get clean
         """)
       env("JAVA_HOME", "/usr/lib/jvm/java-8-openjdk-amd64")
-      runRaw("""update-alternatives --install "/usr/bin/java" "java" "${JAVA_HOME}/bin/java" 1 && \
-                update-alternatives --install "/usr/bin/javac" "javac" "${JAVA_HOME}/bin/javac" 1 && \
-                update-alternatives --set java "${JAVA_HOME}/bin/java" && \
-                update-alternatives --set javac "${JAVA_HOME}/bin/javac"
-      """)
+      // runRaw("""update-alternatives --install "/usr/bin/java" "java" "${JAVA_HOME}/bin/java" 1 && \
+      //           update-alternatives --install "/usr/bin/javac" "javac" "${JAVA_HOME}/bin/javac" 1 && \
+      //           update-alternatives --set java "${JAVA_HOME}/bin/java" && \
+      //           update-alternatives --set javac "${JAVA_HOME}/bin/javac"
+      // """)
       env("MAVEN_VERSION","3.6.3")
       runRaw(
         """mkdir -p /usr/share/maven /usr/share/maven/ref \
